@@ -1,0 +1,39 @@
+void main(float4 position : POSITION,
+          float4 normal : NORMAL,
+          out float4 oPosition : POSITION,
+          out float4 oColor : COLOR)
+{
+    float shininess = 159;
+
+    //Conpute isophotes
+    float3 localNormal = mul(glstate.matrix.modelview[0], normal).xyz;
+    float angle = acos(dot(normalize(localNormal), float3(0, 0, -1)));
+
+    if(angle < 0.0)
+        angle *= -1;
+    if(angle > 1)
+        angle = 1.0;
+    float4 isoColor;
+    if(int(angle * 100.0) % 2 == 0)
+        isoColor = float4(0.8, 0.2, 0.3, 1.0);
+    else
+        isoColor = float4(0.2, 0.8, 0.3, 1.0);
+
+    oPosition = mul(glstate.matrix.mvp, position);
+    float4 lightPosition = mul(glstate.matrix.inverse.modelview[0], glstate.light[0].position);
+    float3 P = mul(glstate.matrix.modelview[0], position).xyz;
+    float3 N = normal.xyz;
+    float3 L = normalize(lightPosition.xyz - P);
+    float diffuseLight = max(dot(N, L), 0);
+    float3 diffuse = isoColor.xyz * diffuseLight;
+
+    // Compute the specular term
+    float3 V = normalize(-P);
+    float3 H = normalize(L + V);
+    float specularLight = pow(max(dot(N, H), 0), shininess);
+    if (diffuseLight <= 0) specularLight = 0;
+    float3 specular = glstate.light[0].specular.xyz * glstate.light[0].diffuse.xyz * specularLight;
+
+    oColor.xyz = diffuse + specular;
+    oColor.w = 1;
+}
